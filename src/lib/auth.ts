@@ -13,6 +13,7 @@ export const auth = betterAuth({
     autoSignIn: true,
     requireEmailVerification: false,
   },
+  trustedOrigins: ["https://erp.hawkdev.cloud"],
   callbacks: {
     session: async ({ session, user }: { session: any; user: any }) => {
       const dbUser = await prisma.user.findUnique({
