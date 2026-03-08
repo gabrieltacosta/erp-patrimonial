@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: erp_patrimonial
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=erp_patrimonial
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=rE154720
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

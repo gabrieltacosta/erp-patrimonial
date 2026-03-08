@@ -1,0 +1,267 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN_MATRIZ
+  GESTOR_FILIAL
+  USUARIO
+}
+
+enum StatusBem {
+  ATIVO
+  EM_MANUTENCAO
+  BAIXADO
+  EM_TRANSFERENCIA
+}
+
+enum EstadoConservacao {
+  NOVO
+  BOM
+  REGULAR
+  RUIM
+  SUCATA
+}
+
+enum TipoMovimentacao {
+  TRANSFERENCIA
+  MANUTENCAO
+  BAIXA
+  AJUSTE
+}
+
+enum TipoManutencao {
+  PREVENTIVA
+  CORRETIVA
+}
+
+enum StatusInventario {
+  ABERTO
+  EM_ANDAMENTO
+  CONCLUIDO
+  CANCELADO
+}
+
+model Empresa {
+  id        String   @id @default(uuid())
+  nome      String
+  cnpj      String   @unique
+  filiais   Filial[]
+  usuarios  User[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Filial {
+  id          String         @id @default(uuid())
+  empresaId   String
+  empresa     Empresa        @relation(fields: [empresaId], references: [id])
+  nome        String
+  isMatriz    Boolean        @default(false)
+  bens        Bem[]
+  usuarios    User[]
+  inventarios Inventario[]
+  movOrigem   Movimentacao[] @relation("FilialOrigem")
+  movDestino  Movimentacao[] @relation("FilialDestino")
+  createdAt   DateTime       @default(now())
+
+  @@index([empresaId])
+}
+
+model Bem {
+  id                String            @id @default(uuid())
+  numeroPatrimonio  String            @unique
+  nome              String
+  descricao         String?
+  categoria         String
+  marca             String?
+  modelo            String?
+  numeroSerie       String?
+  valorAquisicao    Int           
+  dataAquisicao     DateTime
+  vidaUtilMeses     Int
+  valorResidual     Int          
+  estadoConservacao EstadoConservacao
+  status            StatusBem         @default(ATIVO)
+
+  filialId String
+  filial   Filial @relation(fields: [filialId], references: [id])
+
+  localizacao   String?
+  responsavelId String?
+  responsavel   User?   @relation("ResponsavelBem", fields: [responsavelId], references: [id])
+
+  movimentacoes   Movimentacao[]
+  manutencoes     Manutencao[]
+  depreciacao     Depreciacao?
+  inventarioItems InventarioItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([filialId])
+  @@index([numeroPatrimonio])
+}
+
+model Movimentacao {
+  id              String           @id @default(uuid())
+  bemId           String
+  bem             Bem              @relation(fields: [bemId], references: [id])
+  tipo            TipoMovimentacao
+  filialOrigemId  String?
+  filialOrigem    Filial?          @relation("FilialOrigem", fields: [filialOrigemId], references: [id])
+  filialDestinoId String?
+  filialDestino   Filial?          @relation("FilialDestino", fields: [filialDestinoId], references: [id])
+  usuarioId       String
+  usuario         User             @relation(fields: [usuarioId], references: [id])
+  observacao      String?
+  data            DateTime         @default(now())
+
+  @@index([bemId])
+}
+
+model Depreciacao {
+  id              String   @id @default(uuid())
+  bemId           String   @unique
+  bem             Bem      @relation(fields: [bemId], references: [id])
+  taxaMensal      Decimal  @db.Decimal(15, 2)
+  valorDepreciado Int  @default(0) 
+  ultimaExecucao  DateTime @default(now())
+}
+
+model Manutencao {
+  id        String         @id @default(uuid())
+  bemId     String
+  bem       Bem            @relation(fields: [bemId], references: [id])
+  tipo      TipoManutencao
+  descricao String
+  custo     Int        
+  data      DateTime
+  status    String // Ex: AGENDADA, EM_ANDAMENTO, CONCLUIDA
+  createdAt DateTime       @default(now())
+
+  @@index([bemId])
+}
+
+model Inventario {
+  id            String           @id @default(uuid())
+  filialId      String
+  filial        Filial           @relation(fields: [filialId], references: [id])
+  responsavelId String
+  dataInicio    DateTime         @default(now())
+  dataFim       DateTime?
+  status        StatusInventario @default(ABERTO)
+  items         InventarioItem[]
+
+  @@index([filialId])
+}
+
+model InventarioItem {
+  id               String     @id @default(uuid())
+  inventarioId     String
+  inventario       Inventario @relation(fields: [inventarioId], references: [id])
+  bemId            String
+  bem              Bem        @relation(fields: [bemId], references: [id])
+  statusEncontrado StatusBem
+  localizacao      String?
+  observacao       String?
+  auditadoEm       DateTime   @default(now())
+
+  @@unique([inventarioId, bemId])
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  usuarioId   String
+  usuario     User     @relation(fields: [usuarioId], references: [id])
+  acao        String // CREATE, UPDATE, DELETE
+  entidade    String // BEM, MOVIMENTACAO, etc.
+  entidadeId  String
+  dadosAntes  Json?
+  dadosDepois Json?
+  ip          String?
+  data        DateTime @default(now())
+
+  @@index([entidade, entidadeId])
+  @@index([usuarioId])
+}
+
+model User {
+  id            String    @id @default(uuid())
+  name          String
+  email         String
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+
+  ativo         Boolean @default(true)
+  empresaId     String?
+  empresa       Empresa? @relation(fields: [empresaId], references: [id])
+  role          Role           @default(USUARIO)
+  filialId      String?
+  filial        Filial?        @relation(fields: [filialId], references: [id])
+  bensAbaixo    Bem[]          @relation("ResponsavelBem")
+  auditorias    AuditLog[]
+  movimentacoes Movimentacao[]
+
+  @@unique([email])
+  @@index([empresaId])
+  @@map("user")
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  expiresAt DateTime
+  token     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id @default(uuid())
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id @default(uuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
