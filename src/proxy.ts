@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 export async function proxy(request: NextRequest) {
+  if (request.headers.has("next-action")) {
+    return NextResponse.next();
+  }
   // O Better Auth pode usar prefixos diferentes em produção (HTTPS), por isso verificamos ambos
   const sessionToken =
     request.cookies.get("better-auth.session_token") ||

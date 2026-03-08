@@ -1,4 +1,4 @@
-"use server"
+"use server";
 
 import { revalidatePath } from "next/cache";
 import prisma from "@/lib/db";
@@ -7,7 +7,10 @@ import { headers } from "next/headers";
 import { UsuarioFormData } from "./schemas"; // O schema que criamos na etapa anterior
 
 // 1. AÇÃO: Alternar Status (Soft Delete / Reativar)
-export async function alternarStatusUsuarioAction(usuarioId: string, statusAtual: boolean) {
+export async function alternarStatusUsuarioAction(
+  usuarioId: string,
+  statusAtual: boolean,
+) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session || !session.user) return { error: "Não autorizado." };
 
@@ -24,7 +27,7 @@ export async function alternarStatusUsuarioAction(usuarioId: string, statusAtual
 
     await prisma.user.update({
       where: { id: usuarioId },
-      data: { ativo: novoStatus }
+      data: { ativo: novoStatus },
     });
 
     revalidatePath("/usuarios");
@@ -42,25 +45,40 @@ export async function criarUsuarioAction(data: UsuarioFormData) {
   const adminLogado = session.user as any;
 
   try {
-    const emailExiste = await prisma.user.findUnique({ where: { email: data.email } });
-    if (emailExiste) return { error: "E-mail já registado." };
-
-    // Aqui você integraria com a API de Admin do Better Auth para gerar a senha/hash.
-    // Como estamos a gerir o User via Prisma diretamente para o Tenant:
-    await prisma.user.create({
-      data: {
-        name: data.nome,
-        email: data.email,
-        role: data.role as any,
-        filialId: data.filialId,
-        empresaId: adminLogado.empresaId,
-        ativo: true, // Novo utilizador nasce ativo
-      }
+    const emailExiste = await prisma.user.findUnique({
+      where: { email: data.email },
     });
+
+    if (emailExiste) return { error: "E-mail já registado no sistema." };
+
+    // A MÁGICA ATUALIZADA:
+    // Passamos todos os campos diretamente no body.
+    // Usamos "as any" apenas porque o TypeScript do Better Auth espera
+    // obrigatoriamente uma string no filialId, mas nós precisamos passar null
+    // caso seja um SUPER_ADMIN (para não dar erro de Foreign Key no Prisma).
+    const novoAuth = await auth.api.signUpEmail({
+      headers: new Headers(),
+      body: {
+        email: data.email,
+        password: data.password,
+        name: data.nome,
+        role: data.role,
+        empresaId: adminLogado.empresaId,
+        filialId: data.filialId === "" ? null : data.filialId,
+        ativo: true, // Se adicionou o ativo nos additionalFields, pode passar aqui também
+      } as any,
+    });
+
+    if (!novoAuth || !novoAuth.user) {
+      return { error: "Falha ao gerar credenciais de acesso." };
+    }
+
+    // REMOVEMOS o prisma.user.update! O Better Auth já fez o INSERT completo.
 
     revalidatePath("/usuarios");
     return { success: true };
-  } catch (error) {
-    return { error: "Falha ao registar utilizador." };
+  } catch (error: any) {
+    console.error("Erro ao registrar utilizador:", error.message || error);
+    return { error: "Falha interna ao registar o utilizador." };
   }
 }

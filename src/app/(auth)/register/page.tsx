@@ -1,8 +1,8 @@
 import SignUp from "./components/signup-form";
 
-const RegisterPage = async () => {
+const RegisterPage = () => {
   return (
-    <div className="flex flex-col w-full min-h-dvh justify-center items-center">
+    <div className="flex flex-col w-full min-h-dvh justify-center items-center bg-slate-50">
       <SignUp />
     </div>
   );

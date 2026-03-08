@@ -2,7 +2,6 @@ import Link from "next/link";
 import { Plus, Search, Wrench } from "lucide-react";
 import prisma from "@/lib/db";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -16,11 +15,28 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { formatCentsToBRL } from "@/lib/currency";
 import { BotaoConcluirManutencao } from "./components/BotaoConcluirManutencao";
+import { getTenantFilter } from "@/lib/permissions";
+import { redirect } from "next/navigation";
+import { headers } from "next/headers";
+import { auth } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function ManutencoesPage() {
+  const session = await auth.api.getSession({
+        headers: await headers(),
+      });
+    
+      if (!session) return redirect("/login");
+    
+      const user = session.user;
+    
+      const filtroSeguranca = getTenantFilter(user);
+
   const manutencoes = await prisma.manutencao.findMany({
+    where: {
+      bem: filtroSeguranca
+    },
     include: {
       bem: {
         select: {

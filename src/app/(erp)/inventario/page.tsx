@@ -13,11 +13,26 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { getTenantFilter } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
 export default async function InventarioListPage() {
+  const session = await auth.api.getSession({
+      headers: await headers(),
+    });
+  
+    if (!session) return redirect("/login");
+  
+    const user = session.user;
+  
+    const filtroSeguranca = getTenantFilter(user);
+    
   const inventarios = await prisma.inventario.findMany({
+    where: filtroSeguranca,
     include: {
       filial: { select: { nome: true } },
       _count: { select: { items: true } },

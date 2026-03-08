@@ -36,6 +36,7 @@ export function BemForm({ filiais }: BemFormProps) {
       valorAquisicao: 0,
       valorResidual: 0,
       vidaUtilMeses: 60, // Padrão 5 anos
+      filialId: filiais.length === 1 ? filiais[0].id : "", 
     },
   });
 

@@ -13,12 +13,34 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
 export default async function FiliaisPage() {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+
+  if (!session) return redirect("/login");
+
+  const userContext = session.user;
+  let filtroFiliais = {};
+
+  if (
+    userContext.role === "SUPER_ADMIN" ||
+    userContext.role === "ADMIN_MATRIZ"
+  ) {
+    filtroFiliais = { empresaId: userContext.empresaId };
+  } else {
+    filtroFiliais = { id: userContext.filialId };
+  }
+
   // Busca filiais com a contagem de relações (Métrica valiosa para o Admin)
   const filiais = await prisma.filial.findMany({
+    where: filtroFiliais,
     include: {
       empresa: { select: { nome: true } },
       _count: {

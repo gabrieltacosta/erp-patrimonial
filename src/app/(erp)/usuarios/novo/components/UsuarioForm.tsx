@@ -52,6 +52,9 @@ export function UsuarioForm({ filiais }: Props) {
       setServerError(result.error);
       setIsSubmitting(false);
     }
+    if (result?.success) {
+      setIsSubmitting(false);
+    }
   };
 
   return (

@@ -3,88 +3,77 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
-import { z } from "zod"; // <-- Importamos o zod aqui
+import { z } from "zod";
 import { FilialSchema, FilialFormData } from "@/modules/filiais/schemas";
 import { criarFilial } from "@/modules/filiais/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2 } from "lucide-react";
+import { Loader2, Building2 } from "lucide-react";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
-// 1. Extraímos o tipo de ENTRADA do Zod (onde o isMatriz é opcional devido ao .default())
 type FormInput = z.input<typeof FilialSchema>;
 
-export function FilialForm({ empresas }: { empresas: any[] }) {
+// Agora recebemos apenas os dados da empresa do logado
+export function FilialForm({
+  empresaId,
+  empresaNome,
+}: {
+  empresaId: string;
+  empresaNome: string;
+}) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
+  const router = useRouter();
 
-  // 2. Passamos o FormInput para o useForm. O erro de compatibilidade desaparece!
   const {
     register,
     handleSubmit,
-    setValue,
-    watch,
     formState: { errors },
   } = useForm<FormInput>({
     resolver: zodResolver(FilialSchema),
-    defaultValues: { isMatriz: false, nome: "", empresaId: "" },
+    defaultValues: {
+      isMatriz: false, // Forçado para false
+      nome: "",
+      empresaId: empresaId, // Preenchido nos bastidores
+    },
   });
 
-  const isMatrizValue = watch("isMatriz");
-
-  // 3. Recebemos o FormInput na submissão
   const onSubmit = async (data: FormInput) => {
     setIsSubmitting(true);
     setServerError(null);
-    
-    // O Zod já fez a validação e nós garantimos os defaults. 
-    // Podemos fazer o cast seguro (as FilialFormData) para a Server Action
+
     const result = await criarFilial(data as FilialFormData);
-    
+
     if (result?.error) {
       setServerError(result.error);
       setIsSubmitting(false);
+    } else {
+      toast.success("Unidade cadastrada com sucesso!");
+      router.push("/filiais"); // Redireciona de volta para a lista
     }
   };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       {serverError && (
-        <div className="p-3 bg-red-50 text-red-600 border rounded-md text-sm">
+        <div className="p-3 bg-red-50 text-red-600 border rounded-md text-sm font-medium">
           {serverError}
         </div>
       )}
 
       <div className="space-y-4">
+        {/* Mostramos a empresa atual de forma visual e bloqueada */}
         <div className="space-y-2">
-          <Label htmlFor="empresaId">Empresa (Grupo Econômico)</Label>
-          <Select onValueChange={(val) => setValue("empresaId", val, { shouldValidate: true })}>
-            <SelectTrigger>
-              <SelectValue placeholder="Selecione a empresa mãe" />
-            </SelectTrigger>
-            <SelectContent>
-              {empresas.map((emp) => (
-                <SelectItem key={emp.id} value={emp.id}>
-                  {emp.nome}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {errors.empresaId && (
-            <span className="text-xs text-red-500">
-              {errors.empresaId.message}
-            </span>
-          )}
+          <Label>Empresa (Grupo Econômico)</Label>
+          <div className="flex items-center gap-2 px-3 py-2 bg-slate-100 border rounded-md text-slate-500 text-sm">
+            <Building2 className="w-4 h-4" />
+            <span>{empresaNome}</span>
+          </div>
         </div>
 
+        {/* O ÚNICO campo que o utilizador precisa preencher */}
         <div className="space-y-2">
           <Label htmlFor="nome">Nome da Filial / Unidade</Label>
           <Input
@@ -96,30 +85,10 @@ export function FilialForm({ empresas }: { empresas: any[] }) {
             <span className="text-xs text-red-500">{errors.nome.message}</span>
           )}
         </div>
-
-        <div className="flex items-center space-x-2 pt-2">
-          <Checkbox
-            id="isMatriz"
-            checked={isMatrizValue}
-            onCheckedChange={(checked) =>
-              setValue("isMatriz", !!checked, { shouldValidate: true })
-            }
-          />
-          <Label
-            htmlFor="isMatriz"
-            className="text-sm font-normal cursor-pointer"
-          >
-            Definir esta unidade como a Matriz (Sede Principal)
-          </Label>
-        </div>
       </div>
 
       <div className="flex justify-end gap-4 pt-4 border-t">
-        <Button
-          variant="outline"
-          type="button"
-          onClick={() => window.history.back()}
-        >
+        <Button variant="outline" type="button" onClick={() => router.back()}>
           Cancelar
         </Button>
         <Button
@@ -129,7 +98,7 @@ export function FilialForm({ empresas }: { empresas: any[] }) {
         >
           {isSubmitting ? (
             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-          ) : null}{" "}
+          ) : null}
           Cadastrar Filial
         </Button>
       </div>

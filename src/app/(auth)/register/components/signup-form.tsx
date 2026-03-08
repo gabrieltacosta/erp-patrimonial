@@ -103,7 +103,7 @@ export default function SignUp() {
       password: data.password,
       name: `${data.firstName} ${data.lastName}`, // O Better Auth junta o nome aqui
       image: image ? await convertImageToBase64(image) : "",
-      callbackURL: "/login",
+      // callbackURL: "/login",
       fetchOptions: {
         onRequest: () => {
           setLoading(true);
@@ -133,7 +133,9 @@ export default function SignUp() {
             toast.success("Conta corporativa criada com sucesso!");
             router.push("/dashboard");
           } catch (error) {
-            toast.error("Ocorreu um erro ao configurar a empresa.");
+            // ADICIONADO O CONSOLE LOG ABAIXO
+            console.error("Erro ao chamar a Action:", error);
+            toast.error("Ocorreu um erro de rede ao configurar a empresa.");
           } finally {
             setLoading(false);
           }

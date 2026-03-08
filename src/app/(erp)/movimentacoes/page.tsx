@@ -14,12 +14,26 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { getTenantFilter } from "@/lib/permissions";
+import { headers } from "next/headers";
+import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
 export default async function MovimentacoesPage() {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+
+  if (!session) return redirect("/login");
+
+  const user = session.user;
+
+  const filtroSeguranca = getTenantFilter(user);
   // Busca o histórico ordenado pelos mais recentes
   const movimentacoes = await prisma.movimentacao.findMany({
+    where: { bem: filtroSeguranca },
     include: {
       bem: { select: { numeroPatrimonio: true, nome: true } },
       filialOrigem: { select: { nome: true } },
