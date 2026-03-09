@@ -14,7 +14,7 @@ export async function alternarStatusUsuarioAction(
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session || !session.user) return { error: "Não autorizado." };
 
-  const adminLogado = session.user as any;
+  const adminLogado = session.user;
 
   // Proteção: O utilizador não pode desativar a si próprio
   if (adminLogado.id === usuarioId) {
@@ -42,7 +42,7 @@ export async function criarUsuarioAction(data: UsuarioFormData) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session || !session.user) return { error: "Não autorizado." };
 
-  const adminLogado = session.user as any;
+  const adminLogado = session.user;
 
   try {
     const emailExiste = await prisma.user.findUnique({

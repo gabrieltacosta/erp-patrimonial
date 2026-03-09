@@ -38,7 +38,12 @@ const SignUpSchema = z
   .object({
     // Novos campos da Empresa
     nomeEmpresa: z.string().min(3, "Nome da empresa é obrigatório").trim(),
-    cnpj: z.string().min(14, "CNPJ é obrigatório").trim(),
+    cnpj: z
+      .string()
+      .length(14, "CNPJ deve ter 14 caracteres")
+      .trim()
+      .optional()
+      .or(z.literal('')),
 
     // Seus campos originais
     firstName: z.string().min(1, "Nome é obrigatório").trim(),
@@ -121,7 +126,7 @@ export default function SignUp() {
           try {
             const setupResult = await setupEmpresaAction({
               nomeEmpresa: data.nomeEmpresa,
-              cnpj: data.cnpj,
+              cnpj: data.cnpj || "",
             });
 
             if (setupResult?.error) {
@@ -203,9 +208,14 @@ export default function SignUp() {
                   name="cnpj"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>CNPJ</FormLabel>
+                      <FormLabel>CNPJ (Opcional)</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="00.000.000/0001-00" />
+                        <Input
+                          {...field}
+                          maxLength={14}
+                          minLength={14}
+                          placeholder="Apenas números"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

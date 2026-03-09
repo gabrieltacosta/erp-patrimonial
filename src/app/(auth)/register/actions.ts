@@ -26,10 +26,6 @@ export async function setupEmpresaAction(data: SetupTenantParams) {
     // 2. HIGIENIZAÇÃO (Remove tudo que não for número)
     const cnpjLimpo = data.cnpj.replace(/\D/g, "");
 
-    if (cnpjLimpo.length !== 14) {
-      return { error: "CNPJ inválido. Verifique os números digitados." };
-    }
-
     // 3. Verifica se o CNPJ já existe
     const cnpjExistente = await prisma.empresa.findUnique({
       where: { cnpj: cnpjLimpo },
@@ -44,7 +40,7 @@ export async function setupEmpresaAction(data: SetupTenantParams) {
       const empresa = await tx.empresa.create({
         data: {
           nome: data.nomeEmpresa,
-          cnpj: cnpjLimpo, 
+          cnpj: cnpjLimpo || undefined,
         },
       });
 
@@ -62,18 +58,20 @@ export async function setupEmpresaAction(data: SetupTenantParams) {
         data: {
           role: "SUPER_ADMIN",
           filialId: matriz.id,
-          empresaId: empresa.id, 
+          empresaId: empresa.id,
         },
       });
     });
 
     return { success: true };
-    
   } catch (error: any) {
     // 5. O SEGREDO DO DEBUGGING
     // Se der erro, este log vai aparecer no TERMINAL DO VSCODE (fundo preto), não no Chrome!
-    console.error(">>> ERRO FATAL NO SETUP DA EMPRESA:", error.message || error);
-    
+    console.error(
+      ">>> ERRO FATAL NO SETUP DA EMPRESA:",
+      error.message || error,
+    );
+
     // Retornamos um JSON com erro, evitando o "Unexpected response"
     return {
       error: "Falha interna no servidor ao criar empresa. Verifique o console.",

@@ -51,7 +51,7 @@ enum StatusInventario {
 model Empresa {
   id        String   @id @default(uuid())
   nome      String
-  cnpj      String   @unique
+  cnpj      String?   @unique
   filiais   Filial[]
   usuarios  User[]
   createdAt DateTime @default(now())
